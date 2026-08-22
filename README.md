@@ -1,6 +1,6 @@
 # GitHub Daily Repository Automation Pipeline
 
-A conservative, queue-based GitHub maintenance system that discovers repositories through the official GitHub REST API and inspects **exactly one eligible repository per day**. It is designed to improve repositories only when a legitimate, safe maintenance task is available; otherwise it records `no_action_needed` and moves on at the next scheduled run.
+A conservative, queue-based GitHub maintenance system whose **primary product is the repository and its GitHub Actions workflow**. It discovers repositories through the official GitHub REST API and processes **exactly one eligible repository per day**. The optional dashboard is monitoring-only and is never required for automation execution. It is designed to improve repositories only when a legitimate, safe maintenance task is available; otherwise it records `no_action_needed` and moves on at the next scheduled run.
 
 > This project does not create fake commits, contribution farming, or meaningless file changes.
 
@@ -15,10 +15,16 @@ The current safe default is inspection-only. A project-specific maintenance adap
 ```text
 github-daily-pipeline/
 ├── .github/workflows/daily-pipeline.yml
-├── src/pipeline.py
-├── dashboard/                 # dashboard export/state notes
-├── state/queue.json           # persistent queue and run history
-├── logs/
+├── src/
+│   ├── github_api/            # GitHub REST API client
+│   ├── queue/                 # persistent deterministic queue
+│   ├── processor/             # one-repository processor
+│   ├── detectors/             # technology and check detection
+│   ├── validators/            # safety gates
+│   └── logging/               # file and Actions summary logging
+├── dashboard/                 # optional monitoring interface only
+├── state/repos.json           # persistent queue and run history
+├── logs/                      # committed execution logs
 ├── tests/test_pipeline.py
 ├── env.example.template       # copy to .env locally
 ├── .gitignore
@@ -37,7 +43,7 @@ python -m unittest discover -s tests -v
 python src/pipeline.py
 ```
 
-For this repository, the web dashboard is available through the project preview. It presents the same queue concepts and sample states in a responsive editorial operations console.
+The dashboard is optional and contains no execution path, privileged token, or API dependency. The automation continues to operate through GitHub Actions even if the dashboard is offline.
 
 ## GitHub token setup
 
@@ -78,4 +84,4 @@ If the scheduled run appears late, remember that GitHub Actions schedules are be
 
 ## Preparing for GitHub
 
-Create a private repository named `github-daily-pipeline`, push this project, add the two secrets, and enable Actions. Do not publish the token or local `.env` file. After the first dry run confirms discovery and queue synchronization, review and add maintenance adapters one technology at a time.
+Create the private repository `github-daily-pipeline`, push this project, add the two secrets, and enable Actions. The workflow at `.github/workflows/daily-pipeline.yml` is the execution entry point; no Manus URL is involved. Do not publish the token or local `.env` file. After the first dry run confirms discovery and queue synchronization, review and add maintenance adapters one technology at a time.

@@ -12,6 +12,10 @@ on:
         default: true
         type: boolean
 
+concurrency:
+  group: github-daily-pipeline
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -25,6 +29,7 @@ jobs:
       TIMEZONE: Asia/Karachi
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || vars.PIPELINE_DRY_RUN || 'true' }}
       AUTOMATION_REPOSITORY: ${{ github.repository }}
+      QUEUE_STATE_PATH: state/repos.json
     steps:
       - name: Check out automation repository
         uses: actions/checkout@v4
@@ -41,13 +46,13 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Run daily pipeline
-        run: python src/pipeline.py
+        run: python src/main.py
 
-      - name: Commit queue state
+      - name: Commit persistent state and logs
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state/queue.json
+          git add state/repos.json logs/
           git diff --cached --quiet || git commit -m "chore: record daily repository pipeline run"
           git push

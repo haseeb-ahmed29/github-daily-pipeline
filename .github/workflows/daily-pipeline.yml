@@ -46,7 +46,7 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Run daily pipeline
-        run: python src/main.py
+        run: python -m src.main
 
       - name: Commit persistent state and logs
         if: always()

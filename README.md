@@ -1,87 +1,71 @@
-# GitHub Daily Repository Automation Pipeline
+# GitHub Daily Repository Pipeline
 
-A conservative, queue-based GitHub maintenance system whose **primary product is the repository and its GitHub Actions workflow**. It discovers repositories through the official GitHub REST API and processes **exactly one eligible repository per day**. The optional dashboard is monitoring-only and is never required for automation execution. It is designed to improve repositories only when a legitimate, safe maintenance task is available; otherwise it records `no_action_needed` and moves on at the next scheduled run.
+This repository is the **primary automation product**. GitHub Actions discovers the current repositories for `haseeb-ahmed29`, selects exactly one repository in deterministic rotation order per Pakistan calendar day, performs approved maintenance checks, records the result, and advances the rotation. The optional Manus dashboard is monitoring-only; the workflow does not require it or any Manus URL.
 
-> This project does not create fake commits, contribution farming, or meaningless file changes.
+> The system never creates fake commits. If no approved meaningful maintenance task is available, it records `no_action_needed` and advances normally.
 
-## What it does
+## Daily rotation
 
-Every run synchronizes the repository list, ignores archived repositories and this automation repository, adds newly discovered repositories to persistent state, selects one eligible item, and records the outcome. The Python engine detects common project technologies including PHP, Laravel, Python, Django, C#, ASP.NET Core, Node.js, JavaScript, TypeScript, React, Next.js, and HTML/CSS.
+The workflow runs at **10:00 AM Asia/Karachi**, configured as `0 5 * * *` UTC. It also supports `workflow_dispatch` for manual testing. Each run fetches the current GitHub repository list, ignores archived repositories and the automation repository, appends new repositories to the queue, and selects the next enabled repository by persistent `queue_position`.
 
-The current safe default is inspection-only. A project-specific maintenance adapter must be added before a repository is modified. This keeps the system from inventing work and ensures every future commit has an explicit, reviewable purpose.
+After the last eligible repository, the next run wraps to position 1. A second trigger on the same Pakistan calendar date returns without selecting another repository. Failed repositories also advance the pointer; after three failures they are marked for manual review so the rotation cannot remain blocked forever.
 
-## Project structure
+## Structure
 
 ```text
 github-daily-pipeline/
 ├── .github/workflows/daily-pipeline.yml
 ├── src/
-│   ├── github_api/            # GitHub REST API client
-│   ├── queue/                 # persistent deterministic queue
-│   ├── processor/             # one-repository processor
-│   ├── detectors/             # technology and check detection
-│   ├── validators/            # safety gates
-│   └── logging/               # file and Actions summary logging
-├── dashboard/                 # optional monitoring interface only
-├── state/repos.json           # persistent queue and run history
+│   ├── github_api/            # GitHub REST API access
+│   ├── queue/                 # persistent rotation state and index
+│   ├── processor/             # one-repository processing flow
+│   ├── detectors/             # technology and validation command detection
+│   ├── validators/            # clean-tree and credential safety gates
+│   ├── logging/               # file logs and Actions summaries
+│   └── main.py                # Actions entry point
+├── state/repos.json           # durable queue, rotation pointer, and run records
 ├── logs/                      # committed execution logs
+├── tests/test_rotation.py
 ├── tests/test_pipeline.py
-├── env.example.template       # copy to .env locally
+├── .env.example
 ├── .gitignore
 └── README.md
 ```
 
-## Local installation
+## Secrets and variables
 
-The engine uses only Python’s standard library. Python 3.11+ is recommended.
+Configure these GitHub Actions Secrets:
+
+| Name | Required value | Purpose |
+| --- | --- | --- |
+| `PIPELINE_GITHUB_TOKEN` | A token with access to the repositories the pipeline may maintain | API discovery and pushes to target repositories. |
+| `PIPELINE_GITHUB_USERNAME` | `haseeb-ahmed29` | Account whose repositories are discovered. |
+
+The workflow maps those secrets to `GITHUB_TOKEN` and `GITHUB_USERNAME` at runtime. Secret values are never printed or written to state. The workflow requests `contents: write` for its own state commit; a fine-grained token should be restricted to the minimum target repositories and Contents read/write access only. Do not commit `.env`.
+
+## Dry run
+
+Keep `DRY_RUN=true` while validating discovery and rotation. In dry-run mode the engine discovers repositories, persists the queue, selects one repository, records the planned action, and does not clone, modify, commit, or push to the selected repository. The workflow may still commit `state/repos.json` and `logs/pipeline.log` to the automation repository so the queue and audit trail persist.
+
+For a manual test, open **Actions → Daily repository maintenance → Run workflow**, choose `dry_run: true`, and start the run. The Actions summary reports the date, selected repository, position, total queue size, new-repository flag, result, and next rotation position.
+
+## Processing behavior
+
+The processor detects PHP, Laravel, Python, Django, C#, ASP.NET Core, Node.js, JavaScript, TypeScript, React, Next.js, and HTML/CSS markers. It runs safe checks when project manifests support them. Generic edits are prohibited: an approved, project-specific maintenance adapter must identify a real improvement before a target repository can be changed. When no such adapter applies, the correct result is `no_action_needed`.
+
+Before any future adapter is allowed to write, the processor must verify a clean checkout, reject `.env` and history paths, run the appropriate tests or build, use a meaningful commit message, and push without force. Visibility, secrets, unrelated files, and user work are never modified.
+
+## Local validation
 
 ```bash
-cp env.example.template .env
-# Fill in .env locally; never commit it.
-export $(grep -v '^#' .env | xargs)
 python -m unittest discover -s tests -v
-python src/pipeline.py
+python -m src.main
 ```
 
-The dashboard is optional and contains no execution path, privileged token, or API dependency. The automation continues to operate through GitHub Actions even if the dashboard is offline.
-
-## GitHub token setup
-
-Create a fine-grained personal access token with access limited to the repositories this pipeline is allowed to inspect and maintain. Add the following GitHub Actions secrets:
-
-| Secret | Purpose |
-| --- | --- |
-| `PIPELINE_GITHUB_TOKEN` | Token used for API access and safe pushes. The built-in Actions token is used as a fallback. |
-| `PIPELINE_GITHUB_USERNAME` | GitHub username whose repositories should be discovered. |
-
-The token is read only from the environment. It is never hardcoded, written to queue state, printed to logs, or committed.
-
-## GitHub Actions schedule
-
-The workflow runs at **10:00 AM Pakistan Standard Time (Asia/Karachi)** every day. Pakistan Standard Time is UTC+5, so the workflow uses `0 5 * * *`. `workflow_dispatch` is also available for a manual run.
-
-The default configuration is deliberately dry-run. Set the repository variable `PIPELINE_DRY_RUN` to `false` only after adding and reviewing a legitimate maintenance adapter. A manual dispatch includes a `dry_run` input so inspection can be tested safely.
-
-## Queue system
-
-`state/queue.json` is updated atomically and stores repository name, numeric ID, full name, default branch, status, last processed date, last action, failure count, enabled state, and manual-review state. Valid statuses are `pending`, `processing`, `completed`, `failed`, `skipped`, and `no_action_needed`.
-
-New repositories are detected automatically on every run. After three consecutive failures, a repository is marked for manual review. A failed repository does not stop the workflow or prevent the next scheduled run.
-
-## Safety boundaries
-
-The system refuses to force-push, rewrite history, delete repositories, commit `.env` files, overwrite uncommitted user changes, expose credentials, or manufacture activity. It clones the selected repository with its default branch and checks for a clean working tree before any adapter is allowed to edit it. If the checkout is not clean, processing stops for that repository and the error is recorded.
-
-## Dashboard
-
-The dashboard shows total repositories, pending work, completed work, manual-review items, the repository queue, last processed date, status, failure count, latest action, and today’s selected repository. It includes a responsive mobile layout and dark/light mode. The visual language uses a warm editorial workspace with ink-blue navigation and signal orange for active attention.
+For local execution, copy `.env.example` to `.env`, set the placeholders, and keep `DRY_RUN=true`. The runtime uses only Python’s standard library.
 
 ## Troubleshooting
 
-If the workflow reports that `GITHUB_TOKEN` or `GITHUB_USERNAME` is missing, verify the two Actions secrets and the repository variable name. If no repository is selected, check whether every repository is archived, disabled, already in manual review, or excluded as the automation repository. If a run fails three times, inspect the recorded `last_error` in `state/queue.json`, resolve the repository issue manually, and clear `manual_review` only after review.
+If authentication fails, verify the two Actions Secrets exist and that the token can read the account repositories. If the queue is empty, every repository may be archived, excluded, disabled, or under manual review. If a repository is already processed on the same Pakistan calendar date, the duplicate guard intentionally selects nothing. If a run fails three times, inspect `last_error` and resolve the repository issue before clearing `manual_review`.
 
-If the scheduled run appears late, remember that GitHub Actions schedules are best-effort and may be delayed during periods of high load. The configured time remains 05:00 UTC / 10:00 PKT.
-
-## Preparing for GitHub
-
-Create the private repository `github-daily-pipeline`, push this project, add the two secrets, and enable Actions. The workflow at `.github/workflows/daily-pipeline.yml` is the execution entry point; no Manus URL is involved. Do not publish the token or local `.env` file. After the first dry run confirms discovery and queue synchronization, review and add maintenance adapters one technology at a time.
+GitHub scheduled workflows are best-effort and can be delayed during platform load, but the configured schedule remains 05:00 UTC / 10:00 PKT. The automation remains functional if the dashboard is offline.

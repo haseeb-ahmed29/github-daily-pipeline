@@ -1,4 +1,9 @@
 {
   "repositories": [],
-  "runs": []
+  "runs": [],
+  "rotation": {
+    "last_run_date": null,
+    "last_repository_id": null,
+    "next_position": 1
+  }
 }

@@ -1,0 +1,34 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [],
+  "dev_command": "pnpm run dev",
+  "env_vars": {},
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "https://7f0548f6b28a1758d9bf7be630d36cb4.artifacts.cloudflare.net/git/prod/9C55ZLpshoAVjPNWHSySkt.git",
+    "expiration": "2026-08-23T18:53:47.424Z",
+    "token": "art_v2_x_370e4e319bd8e7ef4d14c0abbc789a0bf233d3b9?expires=1787511227",
+    "backend": "GIT_BACKEND_ARTIFACTS"
+  },
+  "name": "github-daily-pipeline",
+  "path": "/home/ubuntu/github-daily-pipeline",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "F7HjHZN4JLXFHdKW3d46uD",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "bQquussTjWABnGs3EBrzQs",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Haseeb Ahmed",
+    "OWNER_OPEN_ID": "36FfkWXwFHKT62MfetD3UK",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "d7e11f9e-dd34-4bfa-b24d-fcdcf0b330b6",
+    "VITE_APP_ID": "9C55ZLpshoAVjPNWHSySkt",
+    "VITE_APP_LOGO": "",
+    "VITE_APP_TITLE": "GitHub Daily Repository Automation Pipeline",
+    "VITE_FRONTEND_FORGE_API_KEY": "cYgPMFobwwMuQDoCfPg4f5",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-static",
+  "test_command": "pnpm test"
+}

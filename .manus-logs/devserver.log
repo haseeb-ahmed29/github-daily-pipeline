@@ -1,0 +1,13 @@
+[2026-08-22T18:53:53.773Z] Starting dev server with command: pnpm run dev
+[2026-08-22T18:53:55.931Z] > github-daily-pipeline@1.0.0 dev /home/ubuntu/github-daily-pipeline
+[2026-08-22T18:53:55.932Z] > vite --host
+[2026-08-22T18:53:56.441Z] VITE v7.1.9  ready in 462 ms
+[2026-08-22T18:53:56.441Z] ➜  Local:   http://localhost:3000/
+[2026-08-22T18:53:56.441Z] ➜  Network: http://169.254.0.21:3000/
+[2026-08-22T18:56:16.647Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-08-22T18:56:44.703Z] 6:56:44 PM [vite] (client) hmr update /src/index.css
+[2026-08-22T18:56:53.499Z] 6:56:53 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-08-22T18:56:59.386Z] 6:56:59 PM [vite] (client) page reload index.html
+[2026-08-22T18:58:37.517Z] 6:58:37 PM [vite] (client) hmr update /src/index.css
+[2026-08-22T18:58:45.898Z] 6:58:45 PM [vite] (client) hmr update /src/index.css
+[2026-08-22T18:59:25.437Z] 6:59:25 PM [vite] (client) hmr update /src/index.css

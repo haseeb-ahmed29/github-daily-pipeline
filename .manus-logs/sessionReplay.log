@@ -1,0 +1,2 @@
+[2026-08-22T18:58:06.968Z] {"timestamp":1787425086787,"kind":"scroll","url":"http://127.0.0.1:3000/","viewport":{"width":1280,"height":720},"payload":{"scrollX":0,"scrollY":360,"documentHeight":1278,"viewportHeight":720}}
+[2026-08-22T18:59:15.147Z] {"timestamp":1787425154302,"kind":"scroll","url":"http://127.0.0.1:3000/","viewport":{"width":1280,"height":720},"payload":{"scrollX":0,"scrollY":360,"documentHeight":1174,"viewportHeight":720}}

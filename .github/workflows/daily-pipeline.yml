@@ -1,0 +1,53 @@
+name: Daily repository maintenance
+
+on:
+  schedule:
+    # 10:00 Asia/Karachi = 05:00 UTC (Pakistan Standard Time is UTC+5)
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Discover and inspect without pushing changes"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  process-one-repository:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GITHUB_TOKEN: ${{ secrets.PIPELINE_GITHUB_TOKEN || github.token }}
+      GITHUB_USERNAME: ${{ secrets.PIPELINE_GITHUB_USERNAME }}
+      TIMEZONE: Asia/Karachi
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || vars.PIPELINE_DRY_RUN || 'true' }}
+      AUTOMATION_REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Check out automation repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PIPELINE_GITHUB_TOKEN || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Run daily pipeline
+        run: python src/pipeline.py
+
+      - name: Commit queue state
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/queue.json
+          git diff --cached --quiet || git commit -m "chore: record daily repository pipeline run"
+          git push

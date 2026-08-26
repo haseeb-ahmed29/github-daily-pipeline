@@ -2,7 +2,7 @@
 
 This repository is the **primary automation product**. GitHub Actions discovers the current repositories for `haseeb-ahmed29`, selects exactly one repository in deterministic rotation order per Pakistan calendar day, performs approved maintenance checks, records the result, and advances the rotation. The optional Manus dashboard is monitoring-only; the workflow does not require it or any Manus URL.
 
-> The system never creates fake commits. If no approved meaningful maintenance task is available, it records `no_action_needed` and advances normally.
+> Each scheduled run updates only the selected repository's `README.md` and creates one Contents API commit. The automation repository separately records queue state and logs so the rotation survives between runs.
 
 ## Daily rotation
 
@@ -45,15 +45,15 @@ The workflow maps those secrets to `GITHUB_TOKEN` and `GITHUB_USERNAME` at runti
 
 ## Dry run
 
-Keep `DRY_RUN=true` while validating discovery and rotation. In dry-run mode the engine discovers repositories, persists the queue, selects one repository, records the planned action, and does not clone, modify, commit, or push to the selected repository. The workflow may still commit `state/repos.json` and `logs/pipeline.log` to the automation repository so the queue and audit trail persist.
+Scheduled runs use `DRY_RUN=false` and update exactly one selected repository per Pakistan calendar day. A manual `workflow_dispatch` defaults to `dry_run: true` for safe testing; set it to false only when you intentionally want to create that day's README commit. The workflow may also commit `state/repos.json` and `logs/pipeline.log` to the automation repository so the queue and audit trail persist.
 
 For a manual test, open **Actions → Daily repository maintenance → Run workflow**, choose `dry_run: true`, and start the run. The Actions summary reports the date, selected repository, position, total queue size, new-repository flag, result, and next rotation position.
 
 ## Processing behavior
 
-The processor detects PHP, Laravel, Python, Django, C#, ASP.NET Core, Node.js, JavaScript, TypeScript, React, Next.js, and HTML/CSS markers. It runs safe checks when project manifests support them. Generic edits are prohibited: an approved, project-specific maintenance adapter must identify a real improvement before a target repository can be changed. When no such adapter applies, the correct result is `no_action_needed`.
+The processor reads the selected repository's existing `README.md` and refreshes one bounded `Daily maintenance` section marked with `<!-- github-daily-pipeline -->`. If the file does not exist, it creates it. The update is sent through GitHub's Contents API with the existing file SHA, which creates one commit on the repository's default branch and returns the commit SHA for the audit log. No source-code files, secrets, history, or unrelated paths are modified.
 
-Before any future adapter is allowed to write, the processor must verify a clean checkout, reject `.env` and history paths, run the appropriate tests or build, use a meaningful commit message, and push without force. Visibility, secrets, unrelated files, and user work are never modified.
+The queue remains deterministic and persistent: archived repositories and the automation repository are excluded, new repositories are appended, the next eligible position advances after success or failure, and the pointer wraps to position 1 after the last repository. Visibility and secrets are never modified.
 
 ## Local validation
 
@@ -62,7 +62,7 @@ python -m unittest discover -s tests -v
 python -m src.main
 ```
 
-For local execution, copy `.env.example` to `.env`, set the placeholders, and keep `DRY_RUN=true`. The runtime uses only Python’s standard library.
+For local execution, copy `.env.example` to `.env`, set the placeholders, and keep `DRY_RUN=true` unless you intentionally want to test a real README update. The runtime uses only Python’s standard library.
 
 ## Troubleshooting
 

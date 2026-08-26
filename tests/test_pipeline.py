@@ -41,9 +41,30 @@ class PipelineTests(unittest.TestCase):
 
     def test_dry_run_never_clones_or_pushes(self):
         record = RepositoryRecord("demo", 1, "octo/demo", "main")
-        status, action = process(record, True, __import__("logging").getLogger("test"))
+        status, action, commit_sha, push_result = process(record, True, __import__("logging").getLogger("test"))
         self.assertEqual(status, "no_action_needed")
         self.assertIn("Dry run", action)
+        self.assertIsNone(commit_sha)
+        self.assertEqual(push_result, "not_attempted")
+
+    def test_readme_update_uses_one_contents_commit(self):
+        class FakeClient:
+            def readme(self, full_name, branch):
+                return {"sha": "old-sha", "content": "IyBFeGFtcGxlIFJlcG9zaXRvcnkK"}
+
+            def update_readme(self, full_name, branch, content, message, sha=None):
+                self.args = (full_name, branch, content, message, sha)
+                return {"commit": {"sha": "new-sha"}}
+
+        record = RepositoryRecord("demo", 1, "octo/demo", "main")
+        client = FakeClient()
+        status, action, commit_sha, push_result = process(record, False, __import__("logging").getLogger("test"), client=client, run_date="2026-08-27")
+        self.assertEqual(status, "completed")
+        self.assertIn("README.md", action)
+        self.assertEqual(commit_sha, "new-sha")
+        self.assertEqual(push_result, "pushed")
+        self.assertEqual(client.args[4], "old-sha")
+        self.assertIn("2026-08-27", client.args[2])
 
     def test_safety_gates(self):
         with self.assertRaises(SafetyViolation):

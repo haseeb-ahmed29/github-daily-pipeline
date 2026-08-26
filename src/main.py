@@ -34,12 +34,12 @@ def main() -> int:
     dry_run = os.environ.get("DRY_RUN", "true").lower() == "true"
     logger.info("Date=%s selected=%s position=%s/%s new=%s dry_run=%s", run_date, target.full_name, target.queue_position, len(records), target.is_new, dry_run)
     try:
-        status, action = process(target, dry_run, logger)
+        status, action, commit_sha, push_result = process(target, dry_run, logger, client=client, run_date=run_date)
         target.status = status
         next_position = next((r.queue_position for r in records if r.enabled and not r.manual_review and r.queue_position > target.queue_position), None)
         if next_position is None:
             next_position = min((r.queue_position for r in records if r.enabled and not r.manual_review), default=1)
-        store.finish_run(target, status, action, run_date, push_result="not_attempted" if dry_run else "adapter_not_configured")
+        store.finish_run(target, status, action, run_date, commit_sha=commit_sha, push_result=push_result)
         logger.info("Result=%s action=%s next_position=%s", status, action, next_position)
         actions_summary("Daily repository rotation", [
             f"Date: `{run_date}`", f"Selected: `{target.full_name}` ({target.queue_position}/{len(records)})",

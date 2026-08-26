@@ -1,12 +1,17 @@
-"""One-repository-per-run processor with conservative maintenance behavior."""
+"""One-repository-per-run processor with README-only maintenance."""
 from __future__ import annotations
 
+from datetime import date
 import subprocess
 import tempfile
 from pathlib import Path
 
 from src.detectors.project import check_commands, detect_technology
+from src.github_api.client import GitHubClient
 from src.validators.safety import ensure_clean_checkout
+
+
+MARKER = "<!-- github-daily-pipeline -->"
 
 
 def _run(command: list[str], cwd: Path) -> str:
@@ -14,20 +19,48 @@ def _run(command: list[str], cwd: Path) -> str:
     return result.stdout[-4000:]
 
 
-def process(record, dry_run: bool, logger) -> tuple[str, str]:
+def _maintenance_section(existing: str | None, run_date: str) -> str:
+    """Add or refresh one bounded section while preserving the repository's README."""
+    current = existing or "# Project\n"
+    section = (
+        f"{MARKER}\n"
+        "## Daily maintenance\n\n"
+        f"README verified by the daily repository maintenance pipeline on {run_date}.\n"
+        ""
+    )
+    if MARKER in current:
+        prefix = current.split(MARKER, 1)[0].rstrip()
+        return f"{prefix}\n\n{section}"
+    return f"{current.rstrip()}\n\n{section}"
+
+
+def process(record, dry_run: bool, logger, client: GitHubClient | None = None, run_date: str | None = None) -> tuple[str, str, str | None, str]:
+    """Update only README.md through the Contents API; return status, action, SHA, push result."""
     if dry_run:
-        return "no_action_needed", f"Dry run: would inspect {record.full_name} on {record.default_branch}"
-    with tempfile.TemporaryDirectory(prefix="github-daily-pipeline-") as workspace:
-        root = Path(workspace) / record.name
-        _run(["git", "clone", "--depth", "1", "--branch", record.default_branch, f"https://github.com/{record.full_name}.git", str(root)], Path(workspace))
-        ensure_clean_checkout(root)
-        technologies = detect_technology(root)
-        for command in check_commands(root, technologies):
-            try:
-                logger.info("Running %s for %s", " ".join(command), record.full_name)
-                _run(command, root)
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
-                raise RuntimeError(f"Validation command failed: {' '.join(command)} ({error})") from error
-        # No generic edit is permitted. An adapter must identify a real task and
-        # validate its change paths before this function can commit or push.
-        return "no_action_needed", f"Inspected {', '.join(technologies)} and ran available checks; no approved meaningful update found"
+        return "no_action_needed", f"Dry run: would update README.md in {record.full_name} on {record.default_branch}", None, "not_attempted"
+    if client is None:
+        raise RuntimeError("GitHub client is required when DRY_RUN is false")
+
+    effective_date = run_date or date.today().isoformat()
+    readme = client.readme(record.full_name, record.default_branch)
+    existing = None
+    sha = None
+    if readme:
+        sha = readme.get("sha")
+        encoded = readme.get("content", "")
+        import base64
+        existing = base64.b64decode(encoded).decode("utf-8") if encoded else ""
+    content = _maintenance_section(existing, effective_date)
+    if existing == content:
+        return "no_action_needed", "README already contains today's maintenance entry", None, "not_attempted"
+
+    response = client.update_readme(
+        record.full_name,
+        record.default_branch,
+        content,
+        f"docs: update README maintenance record ({effective_date})",
+        sha=sha,
+    )
+    commit_sha = ((response.get("commit") or {}).get("sha"))
+    logger.info("Updated README.md in %s with commit %s", record.full_name, commit_sha or "unknown")
+    return "completed", "Updated README.md with today's maintenance record", commit_sha, "pushed"

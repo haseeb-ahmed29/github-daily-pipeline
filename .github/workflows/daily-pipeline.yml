@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Discover and inspect without pushing changes"
+        description: "Inspect without updating the selected repository README"
         required: false
         default: true
         type: boolean
@@ -27,7 +27,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.PIPELINE_GITHUB_TOKEN || github.token }}
       GITHUB_USERNAME: ${{ secrets.PIPELINE_GITHUB_USERNAME }}
       TIMEZONE: Asia/Karachi
-      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || vars.PIPELINE_DRY_RUN || 'true' }}
+      # Scheduled runs must write one README commit; manual runs remain dry-run unless explicitly disabled.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
       AUTOMATION_REPOSITORY: ${{ github.repository }}
       QUEUE_STATE_PATH: state/repos.json
     steps:

@@ -1,71 +1,37 @@
-# GitHub Daily Repository Pipeline
+# GitHub Daily Pipeline
 
-This repository is the **primary automation product**. GitHub Actions discovers the current repositories for `haseeb-ahmed29`, selects exactly one repository in deterministic rotation order per Pakistan calendar day, performs approved maintenance checks, records the result, and advances the rotation. The optional Manus dashboard is monitoring-only; the workflow does not require it or any Manus URL.
+An automation-oriented project for processing repository or content tasks through a repeatable daily pipeline.
 
-> Each scheduled run updates only the selected repository's `README.md` and creates one Contents API commit. The automation repository separately records queue state and logs so the rotation survives between runs.
+## Purpose
 
-## Daily rotation
+This repository was created as a practical project to explore the design and implementation of **GitHub Daily Pipeline**. It can be used as a learning reference, a starting point for further development, or a demonstration of the related business workflow.
 
-The workflow runs at **10:00 AM Asia/Karachi**, configured as `0 5 * * *` UTC. It also supports `workflow_dispatch` for manual testing. Each run fetches the current GitHub repository list, ignores archived repositories and the automation repository, appends new repositories to the queue, and selects the next enabled repository by persistent `queue_position`.
+## Features
 
-After the last eligible repository, the next run wraps to position 1. A second trigger on the same Pakistan calendar date returns without selecting another repository. Failed repositories also advance the pointer; after three failures they are marked for manual review so the rotation cannot remain blocked forever.
+The repository contains the interface and source files needed to demonstrate the project concept. Depending on the selected workflow, users can review the main landing page, navigate the available sections, and interact with the forms, dashboards, records, or utilities included in the current implementation.
 
-## Structure
+## Technology
 
-```text
-github-daily-pipeline/
-├── .github/workflows/daily-pipeline.yml
-├── src/
-│   ├── github_api/            # GitHub REST API access
-│   ├── queue/                 # persistent rotation state and index
-│   ├── processor/             # one-repository processing flow
-│   ├── detectors/             # technology and validation command detection
-│   ├── validators/            # clean-tree and credential safety gates
-│   ├── logging/               # file logs and Actions summaries
-│   └── main.py                # Actions entry point
-├── state/repos.json           # durable queue, rotation pointer, and run records
-├── logs/                      # committed execution logs
-├── tests/test_rotation.py
-├── tests/test_pipeline.py
-├── .env.example
-├── .gitignore
-└── README.md
-```
+| Area | Details |
+|---|---|
+| Primary stack | Python, TypeScript, and pipeline automation files |
+| Project type | Portfolio, learning, prototype, or business workflow demonstration |
+| Entry point | `index.html` or the project startup file |
 
-## Secrets and variables
+## How to Use
 
-Configure these GitHub Actions Secrets:
+1. Clone the repository and open its directory.
+2. Use the repository scripts and tests as the source of truth for local execution; do not commit real credentials.
+3. Install the documented dependencies, configure environment variables from `.env.example`, run the pipeline entry point, and execute the tests before scheduling it.
 
-| Name | Required value | Purpose |
-| --- | --- | --- |
-| `PIPELINE_GITHUB_TOKEN` | A token with access to the repositories the pipeline may maintain | API discovery and pushes to target repositories. |
-| `PIPELINE_GITHUB_USERNAME` | `haseeb-ahmed29` | Account whose repositories are discovered. |
+## Project Structure
 
-The workflow maps those secrets to `GITHUB_TOKEN` and `GITHUB_USERNAME` at runtime. Secret values are never printed or written to state. The workflow requests `contents: write` for its own state commit; a fine-grained token should be restricted to the minimum target repositories and Contents read/write access only. Do not commit `.env`.
+`index.html` or the application entry point contains the main interface. Static assets are kept in the related asset directories, while server or framework files provide the project-specific runtime where applicable.
 
-## Dry run
+## Development Notes
 
-Scheduled runs use `DRY_RUN=false` and update exactly one selected repository per Pakistan calendar day. A manual `workflow_dispatch` defaults to `dry_run: true` for safe testing; set it to false only when you intentionally want to create that day's README commit. The workflow may also commit `state/repos.json` and `logs/pipeline.log` to the automation repository so the queue and audit trail persist.
+This is an educational and demonstration project. Review the existing configuration and replace sample values before using it in a production environment. Contributions and improvements are welcome through focused commits and pull requests.
 
-For a manual test, open **Actions → Daily repository maintenance → Run workflow**, choose `dry_run: true`, and start the run. The Actions summary reports the date, selected repository, position, total queue size, new-repository flag, result, and next rotation position.
+## License
 
-## Processing behavior
-
-The processor reads the selected repository's existing `README.md` and refreshes one bounded `Daily maintenance` section marked with `<!-- github-daily-pipeline -->`. If the file does not exist, it creates it. The update is sent through GitHub's Contents API with the existing file SHA, which creates one commit on the repository's default branch and returns the commit SHA for the audit log. No source-code files, secrets, history, or unrelated paths are modified.
-
-The queue remains deterministic and persistent: archived repositories and the automation repository are excluded, new repositories are appended, the next eligible position advances after success or failure, and the pointer wraps to position 1 after the last repository. Visibility and secrets are never modified.
-
-## Local validation
-
-```bash
-python -m unittest discover -s tests -v
-python -m src.main
-```
-
-For local execution, copy `.env.example` to `.env`, set the placeholders, and keep `DRY_RUN=true` unless you intentionally want to test a real README update. The runtime uses only Python’s standard library.
-
-## Troubleshooting
-
-If authentication fails, verify the two Actions Secrets exist and that the token can read the account repositories. If the queue is empty, every repository may be archived, excluded, disabled, or under manual review. If a repository is already processed on the same Pakistan calendar date, the duplicate guard intentionally selects nothing. If a run fails three times, inspect `last_error` and resolve the repository issue before clearing `manual_review`.
-
-GitHub scheduled workflows are best-effort and can be delayed during platform load, but the configured schedule remains 05:00 UTC / 10:00 PKT. The automation remains functional if the dashboard is offline.
+No separate license has been specified in the repository. Unless a license is added, reuse and redistribution should follow the repository owner's permission.

@@ -138,17 +138,17 @@
     {
       "default_branch": "master",
       "enabled": true,
-      "failure_count": 0,
+      "failure_count": 1,
       "full_name": "itzzrafayy/ProductApp",
       "id": 1242069804,
       "is_new": false,
-      "last_action": "Discovered",
-      "last_error": null,
-      "last_processed_date": null,
+      "last_action": "Processing failed",
+      "last_error": "HTTP Error 403: Forbidden",
+      "last_processed_date": "2026-09-01",
       "manual_review": false,
       "name": "ProductApp",
       "queue_position": 10,
-      "status": "pending"
+      "status": "failed"
     },
     {
       "default_branch": "main",
@@ -1322,9 +1322,9 @@
     }
   ],
   "rotation": {
-    "last_repository_id": 1237079054,
-    "last_run_date": "2026-08-31",
-    "next_position": 10
+    "last_repository_id": 1242069804,
+    "last_run_date": "2026-09-01",
+    "next_position": 11
   },
   "runs": [
     {
@@ -1465,6 +1465,20 @@
       "rotation_position": 9,
       "status": "completed",
       "timestamp": "2026-08-31T11:28:59.626167+00:00",
+      "total_repositories": 88
+    },
+    {
+      "action": "Processing failed",
+      "commit_sha": null,
+      "date": "2026-09-01",
+      "error": "HTTP Error 403: Forbidden",
+      "is_new": false,
+      "next_position": 11,
+      "push_result": "not_attempted",
+      "repository": "itzzrafayy/ProductApp",
+      "rotation_position": 10,
+      "status": "failed",
+      "timestamp": "2026-09-01T09:51:15.294417+00:00",
       "total_repositories": 88
     }
   ]

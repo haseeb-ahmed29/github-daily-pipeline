@@ -24,7 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      GITHUB_TOKEN: ${{ secrets.PIPELINE_GITHUB_TOKEN || github.token }}
+      # Cross-repository API access; configure as a fine-grained PAT secret.
+      GITHUB_TOKEN: ${{ secrets.PIPELINE_GITHUB_TOKEN }}
       GITHUB_USERNAME: ${{ secrets.PIPELINE_GITHUB_USERNAME }}
       TIMEZONE: Asia/Karachi
       # Scheduled runs must write one README commit; manual runs remain dry-run unless explicitly disabled.
@@ -33,10 +34,13 @@ jobs:
       QUEUE_STATE_PATH: state/repos.json
     steps:
       - name: Check out automation repository
+        id: checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PIPELINE_GITHUB_TOKEN || github.token }}
+          # Use the per-workflow token for this repo; a cross-repo PAT may not
+          # have access to the automation repo itself.
+          token: ${{ github.token }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -50,7 +54,7 @@ jobs:
         run: python -m src.main
 
       - name: Commit persistent state and logs
-        if: always()
+        if: always() && steps.checkout.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

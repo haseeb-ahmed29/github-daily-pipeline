@@ -53,10 +53,16 @@ class QueueStore:
 
     def sync(self, discovered: list[dict[str, Any]], automation_repo: str) -> list[RepositoryRecord]:
         state = self.load()
-        current = {item["id"]: RepositoryRecord(**item) for item in state.get("repositories", [])}
+        owner = automation_repo.partition("/")[0]
+        excluded_repositories = {automation_repo.casefold(), f"{owner}/{owner}".casefold()}
+        current = {
+            item["id"]: RepositoryRecord(**item)
+            for item in state.get("repositories", [])
+            if item["full_name"].casefold() not in excluded_repositories
+        }
         max_position = max((record.queue_position for record in current.values()), default=0)
         for repo in discovered:
-            if repo.get("archived") or repo["full_name"] == automation_repo:
+            if repo.get("archived") or repo["full_name"].casefold() in excluded_repositories:
                 continue
             if repo["id"] not in current:
                 max_position += 1

@@ -21,6 +21,17 @@ class RotationTests(unittest.TestCase):
         self.assertEqual(store.select_for_day("2026-08-23").full_name, "octo/one")
         self.assertEqual([r.queue_position for r in records], [1, 2, 3])
 
+    def test_account_profile_readme_repo_is_removed_and_never_queued(self):
+        store = self.make_store()
+        store.path.write_text(
+            '{"repositories":[{"name":"octo","id":9,"full_name":"octo/octo",'
+            '"default_branch":"main","queue_position":1}],"rotation":{"next_position":1}}',
+            encoding="utf-8",
+        )
+        records = store.sync([repo(1, "project"), repo(9, "octo")], "octo/pipeline")
+        self.assertEqual([record.full_name for record in records], ["octo/project"])
+        self.assertEqual([item["full_name"] for item in store.load()["repositories"]], ["octo/project"])
+
     def test_next_repository(self):
         store = self.make_store()
         store.sync([repo(1, "one"), repo(2, "two"), repo(3, "three")], "octo/pipeline")

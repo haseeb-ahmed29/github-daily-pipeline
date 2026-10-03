@@ -26,7 +26,7 @@ jobs:
     env:
       # Cross-repository API access; configure as a fine-grained PAT secret.
       GITHUB_TOKEN: ${{ secrets.PIPELINE_GITHUB_TOKEN }}
-      GITHUB_USERNAME: ${{ secrets.PIPELINE_GITHUB_USERNAME }}
+      GITHUB_USERNAME: ${{ github.repository_owner }}
       TIMEZONE: Asia/Karachi
       # Scheduled runs must write one README commit; manual runs remain dry-run unless explicitly disabled.
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}

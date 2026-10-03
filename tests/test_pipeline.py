@@ -1,8 +1,12 @@
 import unittest
+import logging
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from src.detectors.project import check_commands, detect_technology
+from src.main import main as run_main
 from src.processor.engine import process
 from src.queue.store import QueueStore, RepositoryRecord
 from src.validators.safety import SafetyViolation, validate_change_paths, validate_push_command
@@ -46,6 +50,31 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("Dry run", action)
         self.assertIsNone(commit_sha)
         self.assertEqual(push_result, "not_attempted")
+
+    def test_manual_dry_run_does_not_advance_rotation_state(self):
+        class FakeClient:
+            def repositories(self):
+                return [{"id": 1, "name": "project", "full_name": "octo/project", "default_branch": "main", "archived": False}]
+
+        with TemporaryDirectory() as directory:
+            state_path = Path(directory) / "repos.json"
+            env = {
+                "GITHUB_TOKEN": "test-token",
+                "GITHUB_USERNAME": "octo",
+                "TIMEZONE": "UTC",
+                "DRY_RUN": "true",
+                "AUTOMATION_REPOSITORY": "octo/pipeline",
+                "QUEUE_STATE_PATH": str(state_path),
+                "LOG_DIR": str(Path(directory) / "logs"),
+            }
+            with patch.dict(os.environ, env), \
+                    patch("src.main.GitHubClient", return_value=FakeClient()), \
+                    patch("src.main.configure", return_value=logging.getLogger("test-dry-run")), \
+                    patch("src.main.actions_summary"):
+                self.assertEqual(run_main(), 0)
+            saved = QueueStore(state_path).load()
+            self.assertIsNone(saved["rotation"]["last_run_date"])
+            self.assertEqual(saved["runs"], [])
 
     def test_readme_update_uses_one_contents_commit(self):
         class FakeClient:

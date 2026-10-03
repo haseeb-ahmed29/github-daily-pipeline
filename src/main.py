@@ -30,11 +30,19 @@ def main() -> int:
         actions_summary("Daily repository rotation", [message, f"Total repositories: {len(records)}"])
         return 0
 
-    store.begin_run(target, run_date)
     dry_run = os.environ.get("DRY_RUN", "true").lower() == "true"
+    if not dry_run:
+        store.begin_run(target, run_date)
     logger.info("Date=%s selected=%s position=%s/%s new=%s dry_run=%s", run_date, target.full_name, target.queue_position, len(records), target.is_new, dry_run)
     try:
         status, action, commit_sha, push_result = process(target, dry_run, logger, client=client, run_date=run_date)
+        if dry_run:
+            logger.info("Dry run complete; daily rotation state was not advanced")
+            actions_summary("Daily repository rotation dry run", [
+                f"Date: `{run_date}`", f"Selected: `{target.full_name}` ({target.queue_position}/{len(records)})",
+                f"Result: `{status}`", f"Action: {action}", "Rotation state: unchanged",
+            ])
+            return 0
         target.status = status
         next_position = next((r.queue_position for r in records if r.enabled and not r.manual_review and r.queue_position > target.queue_position), None)
         if next_position is None:
@@ -47,9 +55,13 @@ def main() -> int:
             f"Dry run: `{dry_run}`", f"Next rotation position: `{next_position}`",
         ])
     except Exception as error:
-        store.record_failure(target, run_date, "Processing failed", str(error))
+        if not dry_run:
+            store.record_failure(target, run_date, "Processing failed", str(error))
         logger.exception("Processing failed for %s", target.full_name)
-        actions_summary("Daily repository rotation failure", [f"Date: `{run_date}`", f"Selected: `{target.full_name}`", f"Failure count: `{target.failure_count}`", f"Manual review: `{target.manual_review}`", f"Error: {error}"])
+        if dry_run:
+            actions_summary("Daily repository rotation dry-run failure", [f"Date: `{run_date}`", f"Selected: `{target.full_name}`", f"Error: {error}", "Rotation state: unchanged"])
+        else:
+            actions_summary("Daily repository rotation failure", [f"Date: `{run_date}`", f"Selected: `{target.full_name}`", f"Failure count: `{target.failure_count}`", f"Manual review: `{target.manual_review}`", f"Error: {error}"])
     return 0
 
 
